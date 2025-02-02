@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let uploadedImageUrl = null; // Stocke l'image uploadée temporairement
 
-    // AJOUT : Charger les messages sauvegardés depuis localStorage
+    // Charger les messages sauvegardés depuis localStorage
     const savedMessages = JSON.parse(localStorage.getItem("chatHistory")) || [];
     savedMessages.forEach(msg => addMessage(msg.text, msg.sender, msg.image));
 
@@ -23,11 +23,10 @@ document.addEventListener("DOMContentLoaded", () => {
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
-        // AJOUT : Sauvegarder le message dans localStorage
+        // Sauvegarder le message dans localStorage
         saveMessage({ text, sender, image });
     }
 
-    // AJOUT : Fonction pour sauvegarder dans localStorage
     function saveMessage(message) {
         const chatHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
         chatHistory.push(message);
@@ -47,11 +46,11 @@ document.addEventListener("DOMContentLoaded", () => {
             uploadedImageUrl = null; // Reset après envoi
         }
 
-        // AJOUT : Indicateur que le bot est en train de répondre
-        const pendingMessageDiv = document.createElement("div");
-        pendingMessageDiv.classList.add("chat-message", "bot");
-        pendingMessageDiv.textContent = "Le bot est en train de répondre...";
-        chatMessages.appendChild(pendingMessageDiv);
+        // Ajouter l'indicateur de réponse du bot
+        const typingIndicator = document.createElement("div");
+        typingIndicator.classList.add("chat-message", "bot");
+        typingIndicator.textContent = "Le bot est en train de répondre...";
+        chatMessages.appendChild(typingIndicator);
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
         try {
@@ -60,14 +59,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(requestBody),
             });
+
             const data = await response.json();
 
-            // Retirer l'indicateur une fois la réponse reçue
-            pendingMessageDiv.remove();
+            // Retirer l'indicateur de réponse
+            typingIndicator.remove();
 
             addMessage(data.reply, "bot");
         } catch (error) {
-            pendingMessageDiv.remove();
+            typingIndicator.remove();
             addMessage("Erreur lors de la réponse du bot.", "bot");
         }
     });
