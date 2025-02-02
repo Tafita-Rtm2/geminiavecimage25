@@ -6,31 +6,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let uploadedImageUrl = null; // Stocke l'image uploadée temporairement
 
-    // Charger les messages sauvegardés depuis localStorage
-    const savedMessages = JSON.parse(localStorage.getItem("chatHistory")) || [];
-    savedMessages.forEach(msg => addMessage(msg.text, msg.sender, msg.image));
+    // Charger les messages sauvegardés au démarrage
+    loadMessages();
 
-    function addMessage(text, sender, image = null) {
+    function addMessage(text, sender, image = null, save = true) {
         const msgDiv = document.createElement("div");
         msgDiv.classList.add("chat-message", sender);
         msgDiv.textContent = text;
+
         if (image) {
             const img = document.createElement("img");
             img.src = image;
             img.style.maxWidth = "100px";
             msgDiv.appendChild(img);
         }
+
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
-        // Sauvegarder le message dans localStorage
-        saveMessage({ text, sender, image });
+        if (save) saveMessages(text, sender, image);
     }
 
-    function saveMessage(message) {
-        const chatHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
-        chatHistory.push(message);
-        localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+    // Sauvegarder les messages dans localStorage
+    function saveMessages(text, sender, image) {
+        let messages = JSON.parse(localStorage.getItem("chatMessages")) || [];
+        messages.push({ text, sender, image });
+        localStorage.setItem("chatMessages", JSON.stringify(messages));
+    }
+
+    // Charger les messages depuis localStorage
+    function loadMessages() {
+        let messages = JSON.parse(localStorage.getItem("chatMessages")) || [];
+        messages.forEach(msg => addMessage(msg.text, msg.sender, msg.image, false));
     }
 
     sendMessageBtn.addEventListener("click", async () => {
@@ -46,30 +53,13 @@ document.addEventListener("DOMContentLoaded", () => {
             uploadedImageUrl = null; // Reset après envoi
         }
 
-        // Ajouter l'indicateur de réponse du bot
-        const typingIndicator = document.createElement("div");
-        typingIndicator.classList.add("chat-message", "bot");
-        typingIndicator.textContent = "Le bot est en train de répondre...";
-        chatMessages.appendChild(typingIndicator);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-
-        try {
-            const response = await fetch("/api/message", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(requestBody),
-            });
-
-            const data = await response.json();
-
-            // Retirer l'indicateur de réponse
-            typingIndicator.remove();
-
-            addMessage(data.reply, "bot");
-        } catch (error) {
-            typingIndicator.remove();
-            addMessage("Erreur lors de la réponse du bot.", "bot");
-        }
+        const response = await fetch("/api/message", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody),
+        });
+        const data = await response.json();
+        addMessage(data.reply, "bot");
     });
 
     imageUpload.addEventListener("change", async (event) => {
@@ -81,14 +71,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const formData = new FormData();
         formData.append("image", file);
 
-        try {
-            const uploadResponse = await fetch("/api/upload", { method: "POST", body: formData });
-            const { imageUrl } = await uploadResponse.json();
-            uploadedImageUrl = imageUrl;
+        const uploadResponse = await fetch("/api/upload", { method: "POST", body: formData });
+        const { imageUrl } = await uploadResponse.json();
+        uploadedImageUrl = imageUrl;
 
-            addMessage("Image envoyée. Tapez votre question :", "bot", imageUrl);
-        } catch (error) {
-            addMessage("Erreur lors du téléchargement de l'image.", "bot");
-        }
+        addMessage("Image envoyée. Tapez votre question :", "bot", imageUrl);
     });
 });
