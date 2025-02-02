@@ -6,11 +6,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let uploadedImageUrl = null; // Stocke l'image uploadée temporairement
 
-    // CHARGER LES MESSAGES SAUVEGARDÉS DEPUIS localStorage
+    // AJOUT : Charger les messages sauvegardés depuis localStorage
     const savedMessages = JSON.parse(localStorage.getItem("chatHistory")) || [];
-    savedMessages.forEach(msg => {
-        addMessage(msg.text, msg.sender, msg.image);
-    });
+    savedMessages.forEach(msg => addMessage(msg.text, msg.sender, msg.image));
 
     function addMessage(text, sender, image = null) {
         const msgDiv = document.createElement("div");
@@ -25,10 +23,11 @@ document.addEventListener("DOMContentLoaded", () => {
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
-        // SAUVEGARDER LE MESSAGE DANS localStorage
+        // AJOUT : Sauvegarder le message dans localStorage
         saveMessage({ text, sender, image });
     }
 
+    // AJOUT : Fonction pour sauvegarder dans localStorage
     function saveMessage(message) {
         const chatHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
         chatHistory.push(message);
@@ -48,25 +47,29 @@ document.addEventListener("DOMContentLoaded", () => {
             uploadedImageUrl = null; // Reset après envoi
         }
 
-        // AJOUTER L'INDICATEUR "LE BOT EST EN TRAIN DE RÉPONDRE..."
+        // AJOUT : Indicateur que le bot est en train de répondre
         const pendingMessageDiv = document.createElement("div");
         pendingMessageDiv.classList.add("chat-message", "bot");
         pendingMessageDiv.textContent = "Le bot est en train de répondre...";
         chatMessages.appendChild(pendingMessageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
-        const response = await fetch("/api/message", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requestBody),
-        });
+        try {
+            const response = await fetch("/api/message", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestBody),
+            });
+            const data = await response.json();
 
-        const data = await response.json();
+            // Retirer l'indicateur une fois la réponse reçue
+            pendingMessageDiv.remove();
 
-        // SUPPRIMER L'INDICATEUR APRÈS RÉCEPTION DE LA RÉPONSE
-        pendingMessageDiv.remove();
-
-        addMessage(data.reply, "bot");
+            addMessage(data.reply, "bot");
+        } catch (error) {
+            pendingMessageDiv.remove();
+            addMessage("Erreur lors de la réponse du bot.", "bot");
+        }
     });
 
     imageUpload.addEventListener("change", async (event) => {
@@ -78,10 +81,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const formData = new FormData();
         formData.append("image", file);
 
-        const uploadResponse = await fetch("/api/upload", { method: "POST", body: formData });
-        const { imageUrl } = await uploadResponse.json();
-        uploadedImageUrl = imageUrl;
+        try {
+            const uploadResponse = await fetch("/api/upload", { method: "POST", body: formData });
+            const { imageUrl } = await uploadResponse.json();
+            uploadedImageUrl = imageUrl;
 
-        addMessage("Image envoyée. Tapez votre question :", "bot", imageUrl);
+            addMessage("Image envoyée. Tapez votre question :", "bot", imageUrl);
+        } catch (error) {
+            addMessage("Erreur lors du téléchargement de l'image.", "bot");
+        }
     });
 });
