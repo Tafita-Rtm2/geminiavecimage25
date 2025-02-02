@@ -6,13 +6,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let uploadedImageUrl = null; // Stocke l'image uploadée temporairement
 
-    // Charger les messages sauvegardés depuis localStorage au démarrage
+    // CHARGER LES MESSAGES SAUVEGARDÉS DEPUIS localStorage
     const savedMessages = JSON.parse(localStorage.getItem("chatHistory")) || [];
     savedMessages.forEach(msg => {
         addMessage(msg.text, msg.sender, msg.image);
     });
 
-    // Fonction pour ajouter un message au chat et le sauvegarder dans localStorage
     function addMessage(text, sender, image = null) {
         const msgDiv = document.createElement("div");
         msgDiv.classList.add("chat-message", sender);
@@ -26,32 +25,22 @@ document.addEventListener("DOMContentLoaded", () => {
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
-        // Sauvegarde du message dans localStorage
+        // SAUVEGARDER LE MESSAGE DANS localStorage
         saveMessage({ text, sender, image });
     }
 
-    // Fonction pour sauvegarder les messages dans localStorage
     function saveMessage(message) {
         const chatHistory = JSON.parse(localStorage.getItem("chatHistory")) || [];
         chatHistory.push(message);
         localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
     }
 
-    // Envoi du message
     sendMessageBtn.addEventListener("click", async () => {
         const message = messageInput.value.trim();
         if (!message) return;
 
-        // Afficher le message de l'utilisateur
         addMessage(message, "user");
         messageInput.value = "";
-
-        // Indicateur que le bot est en train de répondre
-        const pendingMessageDiv = document.createElement("div");
-        pendingMessageDiv.classList.add("chat-message", "bot", "pending");
-        pendingMessageDiv.textContent = "Le bot est en train de répondre...";
-        chatMessages.appendChild(pendingMessageDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
 
         let requestBody = { message };
         if (uploadedImageUrl) {
@@ -59,7 +48,13 @@ document.addEventListener("DOMContentLoaded", () => {
             uploadedImageUrl = null; // Reset après envoi
         }
 
-        // Requête vers l'API
+        // AJOUTER L'INDICATEUR "LE BOT EST EN TRAIN DE RÉPONDRE..."
+        const pendingMessageDiv = document.createElement("div");
+        pendingMessageDiv.classList.add("chat-message", "bot");
+        pendingMessageDiv.textContent = "Le bot est en train de répondre...";
+        chatMessages.appendChild(pendingMessageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
         const response = await fetch("/api/message", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -68,14 +63,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const data = await response.json();
 
-        // Supprimer l'indicateur "en train de répondre"
+        // SUPPRIMER L'INDICATEUR APRÈS RÉCEPTION DE LA RÉPONSE
         pendingMessageDiv.remove();
 
-        // Afficher la réponse du bot
         addMessage(data.reply, "bot");
     });
 
-    // Upload d'image
     imageUpload.addEventListener("change", async (event) => {
         const file = event.target.files[0];
         if (!file) return;
@@ -85,11 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const formData = new FormData();
         formData.append("image", file);
 
-        const uploadResponse = await fetch("/api/upload", {
-            method: "POST",
-            body: formData,
-        });
-
+        const uploadResponse = await fetch("/api/upload", { method: "POST", body: formData });
         const { imageUrl } = await uploadResponse.json();
         uploadedImageUrl = imageUrl;
 
