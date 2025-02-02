@@ -42,10 +42,10 @@ body {
 }
 
 .chat-message {
-    margin: 5px 0;
-    padding: 8px;
+    margin: 20px 0;
+    padding: 30px;
     border-radius: 5px;
-    max-width: 80%;
+    max-width: 100%;
 }
 
 .bot {
