@@ -88,3 +88,7 @@ body {
     border-radius: 20px; /* Bord arrondi pour le bouton */
     cursor: pointer;
 }
+.chat-message.bot.pending {
+    font-style: italic;
+    color: gray;
+}
