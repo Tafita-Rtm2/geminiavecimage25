@@ -25,7 +25,7 @@ app.post("/api/message", async (req, res) => {
         let apiUrl = `https://api.zetsu.xyz/gemini?prompt=${encodeURIComponent(message)}`;
 
         if (waitingForImageQuestion && imageUrl) {
-            // 🔥 L’utilisateur pose une question sur une image → On ajoute l'URL
+            // 🔥 L’utilisateur pose une question sur une image → Ajouter l'URL de l'image
             apiUrl += `&url=${encodeURIComponent(imageUrl)}`;
             waitingForImageQuestion = false; // Réinitialiser après utilisation
         }
@@ -42,9 +42,6 @@ app.post("/api/message", async (req, res) => {
 // API Upload d’image et gestion de l’attente
 app.post("/api/upload", upload.single("image"), async (req, res) => {
     try {
-        // ✅ Dès que l'utilisateur envoie une image, on répond immédiatement
-        res.json({ reply: "Téléchargement de l'image en cours..." });
-
         const file = fs.createReadStream(req.file.path);
         const formData = new FormData();
         formData.append("image", file);
@@ -57,6 +54,9 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
         fs.unlinkSync(req.file.path); // Supprime l’image locale après upload
         imageUrl = imgbbResponse.data.data.url; // Stocke l’URL temporairement
         waitingForImageQuestion = true; // On attend une question
+
+        // ✅ Maintenant, on envoie bien un message de confirmation
+        res.json({ reply: "Image reçue. Posez toutes vos questions sur l'image." });
 
     } catch (error) {
         console.error(error);
