@@ -14,45 +14,30 @@ app.use(express.json());
 
 const upload = multer({ dest: "uploads/" });
 
-let imageUrl = null; // Stocke l'URL de l'image après l'upload
+let imageUrl = null; // Stocke temporairement l'URL de l'image uploadée
 
-// 📌 API pour envoyer un message (avec ou sans image)
+// API Texte uniquement ou Texte + Image (Traduction d'image)
 app.post("/api/message", async (req, res) => {
     const { message } = req.body;
 
-    if (!message) {
-        return res.status(400).json({ error: "Message vide" });
-    }
-
     try {
-        let apiUrl = `https://api.zetsu.xyz/gemini?prompt=${encodeURIComponent(message)}`;
-
+        let apiUrl = `https://renzweb.onrender.com/api/gemini-1206?prompt=${encodeURIComponent(message)}&uid=1`;
+        
         if (imageUrl) {
-            apiUrl += `&url=${encodeURIComponent(imageUrl)}`;
-            console.log("✅ Image bien prise en compte:", imageUrl);
-        } else {
-            console.log("⚠️ Aucune image envoyée avec la question.");
+            apiUrl += `&img=${encodeURIComponent(imageUrl)}`;
+            imageUrl = null; // Réinitialisation après utilisation
         }
 
         const response = await axios.get(apiUrl);
-        imageUrl = null; // 🔄 Réinitialisation de l’image après utilisation
-
-        res.json({ reply: response.data.gemini });
+        res.json({ reply: response.data.reply });
     } catch (error) {
-        console.error("❌ Erreur API:", error);
         res.status(500).json({ error: "Erreur API" });
     }
 });
 
-// 📌 API pour uploader une image et la stocker temporairement
+// API Upload d'image (Transformation en lien via ImgBB)
 app.post("/api/upload", upload.single("image"), async (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: "Aucune image reçue" });
-    }
-
     try {
-        console.log("📤 Téléchargement de l'image...");
-
         const file = fs.createReadStream(req.file.path);
         const formData = new FormData();
         formData.append("image", file);
@@ -62,18 +47,15 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
             headers: formData.getHeaders(),
         });
 
-        fs.unlinkSync(req.file.path); // 🔄 Supprime le fichier local après l'upload
-        imageUrl = imgbbResponse.data.data.url; // 🔄 Stocke l’URL temporairement
+        fs.unlinkSync(req.file.path); // Supprime l'image locale après upload
+        imageUrl = imgbbResponse.data.data.url; // Stocke temporairement l'URL
 
-        console.log("✅ Image stockée:", imageUrl);
-        res.json({ message: "Image envoyée avec succès. Posez votre question :", imageUrl });
+        res.json({ imageUrl });
     } catch (error) {
-        console.error("❌ Erreur lors de l'upload de l'image:", error);
         res.status(500).json({ error: "Erreur de téléchargement d'image" });
     }
 });
 
-// 📌 Lancer le serveur
 app.listen(port, () => {
-    console.log(`🚀 Serveur démarré sur http://localhost:${port}`);
+    console.log(`Serveur démarré sur http://localhost:${port}`);
 });
