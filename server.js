@@ -15,25 +15,49 @@ app.use(express.json());
 const upload = multer({ dest: "uploads/" });
 
 let imageUrl = null; // Stocke temporairement l'URL de l'image uploadée
+let conversationHistory = []; // Historique de la conversation
 
-// API Texte ou image selon la présence d'une URL d'image
+// Endpoint pour réinitialiser l'historique (optionnel)
+app.post("/api/reset", (req, res) => {
+    conversationHistory = [];
+    imageUrl = null; // Réinitialise aussi l'image
+    res.json({ message: "Conversation réinitialisée" });
+});
+
+// API pour gérer les messages (texte et image)
 app.post("/api/message", async (req, res) => {
     const { message } = req.body;
 
     try {
         let response;
+        let reply;
+
         if (imageUrl) {
-            // Utilisation de l'API image
+            // 📷 Si une image a été uploadée, envoie le prompt à l'API image
             const apiUrl = `https://sandipbaruwal.onrender.com/gemini2?prompt=${encodeURIComponent(message)}&url=${encodeURIComponent(imageUrl)}`;
             response = await axios.get(apiUrl);
+            reply = response.data.answer;
             imageUrl = null; // Réinitialisation après utilisation
+
+            // Ajoute le message + réponse dans l'historique
+            conversationHistory.push({ role: "user", message: `[Image] ${message}` });
+            conversationHistory.push({ role: "assistant", message: reply });
         } else {
-            // Utilisation de l'API texte
-            const apiUrl = `http://sgp1.hmvhostings.com:25721/gemini?question=${encodeURIComponent(message)}`;
+            // 📝 Conversation texte : Construit un prompt avec l'historique
+            conversationHistory.push({ role: "user", message });
+            const fullPrompt = conversationHistory
+                .map(entry => (entry.role === "user" ? "User: " : "Assistant: ") + entry.message)
+                .join("\n");
+
+            const apiUrl = `http://sgp1.hmvhostings.com:25721/gemini?question=${encodeURIComponent(fullPrompt)}`;
             response = await axios.get(apiUrl);
+            reply = response.data.answer;
+
+            // Ajoute la réponse à l'historique
+            conversationHistory.push({ role: "assistant", message: reply });
         }
-        // On renvoie la réponse extraite de la clé "answer"
-        res.json({ reply: response.data.answer });
+
+        res.json({ reply });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Erreur API" });
@@ -54,7 +78,8 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
 
         fs.unlinkSync(req.file.path); // Supprime l'image locale après upload
         imageUrl = imgbbResponse.data.data.url; // Stocke temporairement l'URL
-        res.json({ imageUrl });
+
+        res.json({ imageUrl, message: "Image téléchargée avec succès. Envoyez maintenant votre message pour l'analyse." });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Erreur de téléchargement d'image" });
