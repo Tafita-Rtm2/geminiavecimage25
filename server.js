@@ -14,22 +14,24 @@ app.use(express.json());
 
 const upload = multer({ dest: "uploads/" });
 
-let imageUrl = null; // Stocke  temporairement l'URL de l'image uploadée
+let imageUrl = null; // Stocke temporairement l'URL de l'image uploadée
 
-// API Texte uniquement ou avec image selon la présence d'une URL
+// API Texte ou image selon la présence d'une URL d'image
 app.post("/api/message", async (req, res) => {
     const { message } = req.body;
 
     try {
-        // Construction de l'URL de l'API en utilisant la nouvelle API
-        let apiUrl = `https://api.zetsu.xyz/gemini?prompt=${encodeURIComponent(message)}&url=`;
+        // Construire l'URL de l'API en fonction de l'image présente ou non
+        let apiUrl = `https://api.zetsu.xyz/gemini?prompt=${encodeURIComponent(message)}`;
         if (imageUrl) {
-            apiUrl = `https://api.zetsu.xyz/gemini?prompt=${encodeURIComponent(message)}&url=${encodeURIComponent(imageUrl)}`;
+            apiUrl += `&url=${encodeURIComponent(imageUrl)}`;
             imageUrl = null; // Réinitialisation après utilisation
         }
 
+        // Appel de l'API
         const response = await axios.get(apiUrl);
-        // La nouvelle API renvoie une réponse dans la clé "gemini"
+
+        // Envoi de la réponse extraite de "gemini"
         res.json({ reply: response.data.gemini });
     } catch (error) {
         console.error(error);
