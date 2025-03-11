@@ -14,10 +14,10 @@ app.use(express.json());
 
 const upload = multer({ dest: "uploads/" });
 
-let imageUrl = null; // Stocke temporairement l'URL de l'image uploadée
+let imageUrl = null; // Stocke temporairement l'URL de l'image
 let waitingForImageQuestion = false; // Indique si on attend une question sur l'image
 
-// API pour gérer les messages (texte ou image)
+// API pour gérer les messages (texte ou texte + image)
 app.post("/api/message", async (req, res) => {
     const { message } = req.body;
 
@@ -25,13 +25,14 @@ app.post("/api/message", async (req, res) => {
         let apiUrl = `https://api.zetsu.xyz/gemini?prompt=${encodeURIComponent(message)}`;
 
         if (waitingForImageQuestion && imageUrl) {
-            // 🔥 L’utilisateur pose une question sur une image → Ajouter l'URL de l'image
+            // 🔥 Si une image est en attente, on ajoute l'URL de l'image à la requête
             apiUrl += `&url=${encodeURIComponent(imageUrl)}`;
-            waitingForImageQuestion = false; // Réinitialiser après utilisation
+            waitingForImageQuestion = false; // Réinitialisation après usage
+            imageUrl = null; // Réinitialisation de l'image
         }
 
         const response = await axios.get(apiUrl);
-        res.json({ reply: response.data.gemini }); // Extraire la réponse
+        res.json({ reply: response.data.gemini });
 
     } catch (error) {
         console.error(error);
@@ -53,10 +54,10 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
 
         fs.unlinkSync(req.file.path); // Supprime l’image locale après upload
         imageUrl = imgbbResponse.data.data.url; // Stocke l’URL temporairement
-        waitingForImageQuestion = true; // On attend une question
+        waitingForImageQuestion = true; // Indique qu'on attend une question
 
-        // ✅ Maintenant, on envoie bien un message de confirmation
-        res.json({ reply: "Image reçue. Posez toutes vos questions sur l'image." });
+        // ✅ Répond immédiatement après l’upload de l’image
+        res.json({ reply: "Image reçue. Quelle est votre question sur l’image ?" });
 
     } catch (error) {
         console.error(error);
