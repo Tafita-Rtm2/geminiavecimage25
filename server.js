@@ -14,7 +14,7 @@ app.use(express.json());
 
 const upload = multer({ dest: "uploads/" });
 
-let imageUrl = null; // Stocke temporairement l'URL de l'image uploadée
+let imageUrl = null; // Stocke  temporairement l'URL de l'image uploadée
 
 // API Texte uniquement ou avec image selon la présence d'une URL
 app.post("/api/message", async (req, res) => {
