@@ -14,26 +14,27 @@ app.use(express.json());
 
 const upload = multer({ dest: "uploads/" });
 
-let imageUrl = null;
+let imageUrl = null; // Stocke temporairement l'URL de l'image uploadée
 
+// API Texte uniquement
 app.post("/api/message", async (req, res) => {
     const { message } = req.body;
 
     try {
-        let apiUrl = `https://renzweb.onrender.com/api/gemini-1206?prompt=${encodeURIComponent(message)}&uid=1`;
+        let apiUrl = `https://kaiz-apis.gleeze.com/api/gemini-vision?q=${encodeURIComponent(message)}&uid=1`;
         if (imageUrl) {
-            apiUrl += `&img=${encodeURIComponent(imageUrl)}`;
-            imageUrl = null;
+            apiUrl += `&imageUrl=${encodeURIComponent(imageUrl)}`;
+            imageUrl = null; // Reset après l'utilisation
         }
 
         const response = await axios.get(apiUrl);
-        const formattedReply = `<pre><code>${response.data.reply}</code></pre>`;
-        res.json({ reply: formattedReply });
+        res.json({ reply: response.data.reply });
     } catch (error) {
         res.status(500).json({ error: "Erreur API" });
     }
 });
 
+// API Upload d'image (Transformation en lien via ImgBB)
 app.post("/api/upload", upload.single("image"), async (req, res) => {
     try {
         const file = fs.createReadStream(req.file.path);
@@ -45,8 +46,8 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
             headers: formData.getHeaders(),
         });
 
-        fs.unlinkSync(req.file.path);
-        imageUrl = imgbbResponse.data.data.url;
+        fs.unlinkSync(req.file.path); // Supprime l'image locale après upload
+        imageUrl = imgbbResponse.data.data.url; // Stocke temporairement l'URL
         res.json({ imageUrl });
     } catch (error) {
         res.status(500).json({ error: "Erreur de téléchargement d'image" });
