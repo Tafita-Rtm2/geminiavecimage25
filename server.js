@@ -15,20 +15,18 @@ app.use(express.json());
 const upload = multer({ dest: "uploads/" });
 
 let imageUrl = null; // Stocke temporairement l'URL de l'image
-let waitingForImageQuestion = false; // Indique si on attend une question sur l'image
 
-// API pour gérer les messages (texte ou texte + image)
+// API pour envoyer des messages texte et gérer les images
 app.post("/api/message", async (req, res) => {
     const { message } = req.body;
 
     try {
         let apiUrl = `https://api.zetsu.xyz/gemini?prompt=${encodeURIComponent(message)}`;
 
-        if (waitingForImageQuestion && imageUrl) {
-            // ✅ Utilise l'image pour la question
+        if (imageUrl) {
+            // ✅ Ajoute l'image si disponible
             apiUrl += `&url=${encodeURIComponent(imageUrl)}`;
-            waitingForImageQuestion = false; // Reset après usage
-            imageUrl = null; // Reset de l'image
+            imageUrl = null; // Reset après utilisation
         }
 
         const response = await axios.get(apiUrl);
@@ -40,7 +38,7 @@ app.post("/api/message", async (req, res) => {
     }
 });
 
-// API Upload d’image et gestion de l’attente
+// API Upload d’image
 app.post("/api/upload", upload.single("image"), async (req, res) => {
     try {
         const file = fs.createReadStream(req.file.path);
@@ -54,10 +52,9 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
 
         fs.unlinkSync(req.file.path); // Supprime l’image locale après upload
         imageUrl = imgbbResponse.data.data.url; // Stocke l’URL temporairement
-        waitingForImageQuestion = true; // Indique qu'on attend une question
 
         // ✅ Répond immédiatement après l’upload de l’image
-        res.json({ reply: "Image reçue. Quelle est votre question sur l’image ?" });
+        res.json({ reply: "Image reçue. Posez votre question sur l’image." });
 
     } catch (error) {
         console.error(error);
