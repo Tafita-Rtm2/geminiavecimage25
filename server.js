@@ -25,10 +25,10 @@ app.post("/api/message", async (req, res) => {
         let apiUrl = `https://api.zetsu.xyz/gemini?prompt=${encodeURIComponent(message)}`;
 
         if (waitingForImageQuestion && imageUrl) {
-            // 🔥 Si une image est en attente, on ajoute l'URL de l'image à la requête
+            // ✅ Utilise l'image pour la question
             apiUrl += `&url=${encodeURIComponent(imageUrl)}`;
-            waitingForImageQuestion = false; // Réinitialisation après usage
-            imageUrl = null; // Réinitialisation de l'image
+            waitingForImageQuestion = false; // Reset après usage
+            imageUrl = null; // Reset de l'image
         }
 
         const response = await axios.get(apiUrl);
