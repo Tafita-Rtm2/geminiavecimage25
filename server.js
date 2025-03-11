@@ -27,15 +27,29 @@ app.post("/api/message", async (req, res) => {
         }
 
         const response = await axios.get(apiUrl);
-        const reply = response.data.reply;
-
-        // Détecter les réponses contenant du code
-        const isCode = reply.includes("```");
-        const cleanedReply = reply.replace(/```/g, "");
-
-        res.json({ reply: cleanedReply, isCode });
+        const formattedReply = `<pre><code>${response.data.reply}</code></pre>`;
+        res.json({ reply: formattedReply });
     } catch (error) {
         res.status(500).json({ error: "Erreur API" });
+    }
+});
+
+app.post("/api/upload", upload.single("image"), async (req, res) => {
+    try {
+        const file = fs.createReadStream(req.file.path);
+        const formData = new FormData();
+        formData.append("image", file);
+        formData.append("key", "6fef3d0d57641305c16bd5c0b5e27426");
+
+        const imgbbResponse = await axios.post("https://api.imgbb.com/1/upload", formData, {
+            headers: formData.getHeaders(),
+        });
+
+        fs.unlinkSync(req.file.path);
+        imageUrl = imgbbResponse.data.data.url;
+        res.json({ imageUrl });
+    } catch (error) {
+        res.status(500).json({ error: "Erreur de téléchargement d'image" });
     }
 });
 
