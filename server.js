@@ -21,14 +21,13 @@ app.post("/api/message", async (req, res) => {
     const { message } = req.body;
 
     try {
-        let apiUrl = `https://kaiz-apis.gleeze.com/api/gemini-vision?q=${encodeURIComponent(message)}&uid=1`;
-        if (imageUrl) {
-            apiUrl += `&imageUrl=${encodeURIComponent(imageUrl)}`;
-            imageUrl = null; // Reset après l'utilisation
-        }
+        const apiUrl = `https://kaiz-apis.gleeze.com/api/gemini-vision?q=${encodeURIComponent(message)}&uid=1` + 
+                       (imageUrl ? `&imageUrl=${encodeURIComponent(imageUrl)}` : "");
 
         const response = await axios.get(apiUrl);
-        res.json({ response: response.data.response });
+        imageUrl = null; // Reset après l'utilisation
+
+        res.json({ reply: response.data.response }); // Modification ici pour récupérer la bonne clé
     } catch (error) {
         res.status(500).json({ error: "Erreur API" });
     }
