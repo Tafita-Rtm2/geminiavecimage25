@@ -28,7 +28,7 @@ app.post("/api/message", async (req, res) => {
         }
 
         const response = await axios.get(apiUrl);
-        res.json({ reply: response.data.reply });
+        res.json({ response: response.data.response });
     } catch (error) {
         res.status(500).json({ error: "Erreur API" });
     }
