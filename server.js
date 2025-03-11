@@ -16,20 +16,26 @@ const upload = multer({ dest: "uploads/" });
 
 let imageUrl = null; // Stocke temporairement l'URL de l'image uploadée
 
-// API Texte uniquement
+// API Texte ou image selon la présence d'une URL d'image
 app.post("/api/message", async (req, res) => {
     const { message } = req.body;
 
     try {
-        let apiUrl = `https://zaikyoo.onrender.com/api/gemini-2-0-exp?prompt=${encodeURIComponent(message)}&uid=1`;
+        let response;
         if (imageUrl) {
-            apiUrl += `&img=${encodeURIComponent(imageUrl)}`;
-            imageUrl = null; // Reset après l'utilisation
+            // Utilisation de l'API image
+            const apiUrl = `https://sandipbaruwal.onrender.com/gemini2?prompt=${encodeURIComponent(message)}&url=${encodeURIComponent(imageUrl)}`;
+            response = await axios.get(apiUrl);
+            imageUrl = null; // Réinitialisation après utilisation
+        } else {
+            // Utilisation de l'API texte
+            const apiUrl = `http://sgp1.hmvhostings.com:25721/gemini?question=${encodeURIComponent(message)}`;
+            response = await axios.get(apiUrl);
         }
-
-        const response = await axios.get(apiUrl);
-        res.json({ reply: response.data.reply });
+        // On renvoie la réponse extraite de la clé "answer"
+        res.json({ reply: response.data.answer });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: "Erreur API" });
     }
 });
@@ -50,6 +56,7 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
         imageUrl = imgbbResponse.data.data.url; // Stocke temporairement l'URL
         res.json({ imageUrl });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: "Erreur de téléchargement d'image" });
     }
 });
