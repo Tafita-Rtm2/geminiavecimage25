@@ -16,19 +16,23 @@ const upload = multer({ dest: "uploads/" });
 
 let imageUrl = null; // Stocke temporairement l'URL de l'image uploadée
 
-// API Texte uniquement ou Texte + Image (Traduction d'image)
+// API Texte uniquement ou Texte + Image (Traduction de texte sur image)
 app.post("/api/message", async (req, res) => {
     const { message } = req.body;
 
     try {
         let apiUrl = `https://renzweb.onrender.com/api/gemini-1206?prompt=${encodeURIComponent(message)}&uid=1`;
-        
+
+        // Si une image a été uploadée, on l'ajoute à la requête
         if (imageUrl) {
             apiUrl += `&img=${encodeURIComponent(imageUrl)}`;
-            imageUrl = null; // Réinitialisation après utilisation
         }
 
         const response = await axios.get(apiUrl);
+        
+        // Réinitialisation de l'image après utilisation
+        imageUrl = null;
+
         res.json({ reply: response.data.reply });
     } catch (error) {
         res.status(500).json({ error: "Erreur API" });
