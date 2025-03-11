@@ -16,7 +16,7 @@ const upload = multer({ dest: "uploads/" });
 
 let imageUrl = null; // Stocke temporairement l'URL de l'image uploadée
 
-// API Message (texte ou image)
+// API Message (texte ou texte + image)
 app.post("/api/message", async (req, res) => {
     const { message } = req.body;
 
@@ -29,14 +29,16 @@ app.post("/api/message", async (req, res) => {
 
         if (imageUrl) {
             apiUrl += `&url=${encodeURIComponent(imageUrl)}`;
-            console.log("Envoi de l'image avec la question:", apiUrl);
-            imageUrl = null; // Reset après utilisation
+            console.log("✅ Image envoyée avec la question:", imageUrl);
+        } else {
+            console.log("⚠️ Aucune image envoyée avec la question.");
         }
 
         const response = await axios.get(apiUrl);
+        imageUrl = null; // Reset après utilisation
         res.json({ reply: response.data.gemini });
     } catch (error) {
-        console.error("Erreur API:", error);
+        console.error("❌ Erreur API:", error);
         res.status(500).json({ error: "Erreur API" });
     }
 });
@@ -48,7 +50,7 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
     }
 
     try {
-        console.log("Téléchargement d'image en cours...");
+        console.log("📤 Téléchargement d'image en cours...");
 
         const file = fs.createReadStream(req.file.path);
         const formData = new FormData();
@@ -62,14 +64,14 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
         fs.unlinkSync(req.file.path); // Supprime l'image locale après upload
         imageUrl = imgbbResponse.data.data.url; // Stocke temporairement l'URL de l'image
 
-        console.log("Image téléchargée:", imageUrl);
-        res.json({ message: "Image envoyée. Tapez votre question :", imageUrl });
+        console.log("✅ Image bien stockée:", imageUrl);
+        res.json({ message: "Image envoyée avec succès. Tapez votre question :", imageUrl });
     } catch (error) {
-        console.error("Erreur lors de l'upload de l'image:", error);
+        console.error("❌ Erreur lors de l'upload de l'image:", error);
         res.status(500).json({ error: "Erreur de téléchargement d'image" });
     }
 });
 
 app.listen(port, () => {
-    console.log(`Serveur démarré sur http://localhost:${port}`);
+    console.log(`🚀 Serveur démarré sur http://localhost:${port}`);
 });
