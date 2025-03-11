@@ -15,42 +15,43 @@ app.use(express.json());
 const upload = multer({ dest: "uploads/" });
 
 let imageUrl = null; // Stocke temporairement l'URL de l'image uploadée
+let waitingForImageQuestion = false; // Indique si on attend une question sur l'image
 let conversationHistory = []; // Historique de la conversation
 
-// Endpoint pour réinitialiser l'historique (optionnel)
+// Endpoint pour réinitialiser l'historique
 app.post("/api/reset", (req, res) => {
     conversationHistory = [];
-    imageUrl = null; // Réinitialise aussi l'image
+    imageUrl = null;
+    waitingForImageQuestion = false;
     res.json({ message: "Conversation réinitialisée" });
 });
 
-// API pour gérer les messages (texte et image)
+// API pour gérer les messages (texte et questions sur l’image)
 app.post("/api/message", async (req, res) => {
     const { message } = req.body;
 
     try {
-        let response;
         let reply;
 
-        if (imageUrl) {
-            // 📷 Si une image a été uploadée, envoie le prompt à l'API image
+        if (waitingForImageQuestion && imageUrl) {
+            // 📷 L’utilisateur pose une question sur l’image → Envoyer à l’API d’image
             const apiUrl = `https://sandipbaruwal.onrender.com/gemini2?prompt=${encodeURIComponent(message)}&url=${encodeURIComponent(imageUrl)}`;
-            response = await axios.get(apiUrl);
+            const response = await axios.get(apiUrl);
             reply = response.data.answer;
-            imageUrl = null; // Réinitialisation après utilisation
+            waitingForImageQuestion = false; // Désactive l'attente après la réponse
 
-            // Ajoute le message + réponse dans l'historique
-            conversationHistory.push({ role: "user", message: `[Image] ${message}` });
+            // Sauvegarde dans l'historique
+            conversationHistory.push({ role: "user", message: `[Question sur l'image] ${message}` });
             conversationHistory.push({ role: "assistant", message: reply });
         } else {
-            // 📝 Conversation texte : Construit un prompt avec l'historique
+            // 📝 Conversation texte normale
             conversationHistory.push({ role: "user", message });
             const fullPrompt = conversationHistory
                 .map(entry => (entry.role === "user" ? "User: " : "Assistant: ") + entry.message)
                 .join("\n");
 
             const apiUrl = `http://sgp1.hmvhostings.com:25721/gemini?question=${encodeURIComponent(fullPrompt)}`;
-            response = await axios.get(apiUrl);
+            const response = await axios.get(apiUrl);
             reply = response.data.answer;
 
             // Ajoute la réponse à l'historique
@@ -64,9 +65,12 @@ app.post("/api/message", async (req, res) => {
     }
 });
 
-// API Upload d'image (Transformation en lien via ImgBB)
+// API Upload d’image et gestion de l’attente pour une question
 app.post("/api/upload", upload.single("image"), async (req, res) => {
     try {
+        // ✅ Dès que l'utilisateur envoie une image, le bot répond immédiatement
+        res.json({ reply: "Téléchargement de l'image en cours..." });
+
         const file = fs.createReadStream(req.file.path);
         const formData = new FormData();
         formData.append("image", file);
@@ -76,10 +80,13 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
             headers: formData.getHeaders(),
         });
 
-        fs.unlinkSync(req.file.path); // Supprime l'image locale après upload
-        imageUrl = imgbbResponse.data.data.url; // Stocke temporairement l'URL
+        fs.unlinkSync(req.file.path); // Supprime l’image locale après upload
+        imageUrl = imgbbResponse.data.data.url; // Stocke temporairement l’URL
+        waitingForImageQuestion = true; // Active l’attente d’une question
 
-        res.json({ imageUrl, message: "Image téléchargée avec succès. Envoyez maintenant votre message pour l'analyse." });
+        // ✅ Une fois l’image uploadée, le bot envoie un message
+        conversationHistory.push({ role: "assistant", message: "Image reçue. Posez toutes vos questions sur l'image." });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Erreur de téléchargement d'image" });
