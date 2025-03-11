@@ -15,25 +15,42 @@ app.use(express.json());
 const upload = multer({ dest: "uploads/" });
 
 let imageUrl = null; // Stocke temporairement l'URL de l'image uploadée
+let conversationHistory = []; // Historique de la conversation
 
-// API Texte ou image selon la présence d'une URL d'image
+// Endpoint optionnel pour réinitialiser l'historique de conversation
+app.post("/api/reset", (req, res) => {
+    conversationHistory = [];
+    res.json({ message: "Conversation réinitialisée" });
+});
+
+// API qui gère le texte et l'image avec conservation du contexte conversationnel
 app.post("/api/message", async (req, res) => {
     const { message } = req.body;
+
+    // Ajoute le message de l'utilisateur à l'historique
+    conversationHistory.push({ role: "user", message });
+
+    // Construit le prompt complet à partir de l'historique
+    const fullPrompt = conversationHistory.map(entry => {
+        return (entry.role === "user" ? "User: " : "Assistant: ") + entry.message;
+    }).join("\n");
 
     try {
         let response;
         if (imageUrl) {
-            // Utilisation de l'API image
-            const apiUrl = `https://sandipbaruwal.onrender.com/gemini2?prompt=${encodeURIComponent(message)}&url=${encodeURIComponent(imageUrl)}`;
+            // Si une image a été uploadée, on utilise l'API d'image avec le contexte complet
+            const apiUrl = `https://sandipbaruwal.onrender.com/gemini2?prompt=${encodeURIComponent(fullPrompt)}&url=${encodeURIComponent(imageUrl)}`;
             response = await axios.get(apiUrl);
-            imageUrl = null; // Réinitialisation après utilisation
+            imageUrl = null; // Réinitialise après utilisation
         } else {
-            // Utilisation de l'API texte
-            const apiUrl = `http://sgp1.hmvhostings.com:25721/gemini?question=${encodeURIComponent(message)}`;
+            // Sinon, on utilise l'API texte en passant le contexte complet
+            const apiUrl = `http://sgp1.hmvhostings.com:25721/gemini?question=${encodeURIComponent(fullPrompt)}`;
             response = await axios.get(apiUrl);
         }
-        // On renvoie la réponse extraite de la clé "answer"
-        res.json({ reply: response.data.answer });
+        const answer = response.data.answer;
+        // Ajoute la réponse de l'API à l'historique
+        conversationHistory.push({ role: "assistant", message: answer });
+        res.json({ reply: answer });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Erreur API" });
