@@ -16,33 +16,39 @@ const upload = multer({ dest: "uploads/" });
 
 let imageUrl = null; // Stocke temporairement l'URL de l'image uploadée
 
-// API Texte ou image selon la présence d'une URL d'image
+// API Message (texte ou image)
 app.post("/api/message", async (req, res) => {
     const { message } = req.body;
 
+    if (!message) {
+        return res.status(400).json({ error: "Message vide" });
+    }
+
     try {
-        // Construire l'URL de l'API en fonction de l'image présente ou non
         let apiUrl = `https://api.zetsu.xyz/gemini?prompt=${encodeURIComponent(message)}`;
+
         if (imageUrl) {
             apiUrl += `&url=${encodeURIComponent(imageUrl)}`;
-            imageUrl = null; // Réinitialisation après utilisation
+            console.log("Envoi de l'image avec la question:", apiUrl);
+            imageUrl = null; // Reset après utilisation
         }
 
-        // Appel de l'API
         const response = await axios.get(apiUrl);
-
-        // Envoi de la réponse extraite de "gemini"
         res.json({ reply: response.data.gemini });
     } catch (error) {
-        console.error(error);
+        console.error("Erreur API:", error);
         res.status(500).json({ error: "Erreur API" });
     }
 });
 
 // API Upload d'image (Transformation en lien via ImgBB)
 app.post("/api/upload", upload.single("image"), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: "Aucune image reçue" });
+    }
+
     try {
-        res.json({ reply: "📤 Téléchargement de l'image en cours..." });
+        console.log("Téléchargement d'image en cours...");
 
         const file = fs.createReadStream(req.file.path);
         const formData = new FormData();
@@ -54,15 +60,16 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
         });
 
         fs.unlinkSync(req.file.path); // Supprime l'image locale après upload
-        imageUrl = imgbbResponse.data.data.url; // Stocke temporairement l'URL
+        imageUrl = imgbbResponse.data.data.url; // Stocke temporairement l'URL de l'image
 
-        res.json({ reply: "✅ Image reçue. Posez toutes vos questions sur l'image." });
+        console.log("Image téléchargée:", imageUrl);
+        res.json({ message: "Image envoyée. Tapez votre question :", imageUrl });
     } catch (error) {
-        console.error(error);
+        console.error("Erreur lors de l'upload de l'image:", error);
         res.status(500).json({ error: "Erreur de téléchargement d'image" });
     }
 });
 
 app.listen(port, () => {
-    console.log(`🚀 Serveur démarré sur http://localhost:${port}`);
+    console.log(`Serveur démarré sur http://localhost:${port}`);
 });
