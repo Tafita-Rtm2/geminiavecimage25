@@ -24,7 +24,9 @@ app.post("/api/message", async (req, res) => {
         let apiUrl = `https://renzweb.onrender.com/api/gemini-1206?prompt=${encodeURIComponent(message)}&uid=1`;
         if (imageUrl) {
             apiUrl += `&img=${encodeURIComponent(imageUrl)}`;
-            imageUrl = null; // Reset après
+            imageUrl = null; // Reset après l'utilisation
+        }
+
         const response = await axios.get(apiUrl);
         res.json({ reply: response.data.reply });
     } catch (error) {
