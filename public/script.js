@@ -1,80 +1,92 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const chatMessages = document.getElementById("chatMessages");
-    const messageInput = document.getElementById("messageInput");
-    const sendMessageBtn = document.getElementById("sendMessage");
-    const imageUpload = document.getElementById("imageUpload");
+const chatBox = document.getElementById("chat-box");
+const userInput = document.getElementById("user-input");
+const sendBtn = document.getElementById("send-btn");
+const uploadBtn = document.getElementById("upload-btn");
+const imageInput = document.getElementById("image-input");
 
-    let uploadedImageUrl = null; // Stocke l'image uploadée temporairement
+let lastImageUrl = ""; // Stocke l'image téléversée pour poser une question dessus
 
-    // Charger les messages sauvegardés au démarrage
-    loadMessages();
+// Charger la conversation enregistrée
+window.onload = () => {
+    const savedChat = localStorage.getItem("conversation");
+    if (savedChat) {
+        chatBox.innerHTML = savedChat;
+    }
+};
 
-    function addMessage(text, sender, image = null, save = true) {
-        const msgDiv = document.createElement("div");
-        msgDiv.classList.add("chat-message", sender);
-        msgDiv.textContent = text;
+// Fonction pour ajouter un message dans le chat
+function addMessage(text, sender) {
+    const messageDiv = document.createElement("div");
+    messageDiv.classList.add("message", sender === "user" ? "user-message" : "bot-message");
+    messageDiv.innerText = text;
+    chatBox.appendChild(messageDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    saveConversation();
+}
 
-        if (image) {
-            const img = document.createElement("img");
-            img.src = image;
-            img.style.maxWidth = "100px";
-            msgDiv.appendChild(img);
-        }
+// Fonction pour sauvegarder la conversation
+function saveConversation() {
+    localStorage.setItem("conversation", chatBox.innerHTML);
+}
 
-        chatMessages.appendChild(msgDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+// Fonction pour envoyer un message texte à l'API Kaizenji
+function sendMessage() {
+    const message = userInput.value.trim();
+    if (message === "") return;
 
-        if (save) saveMessages(text, sender, image);
+    addMessage(message, "user");
+    userInput.value = "";
+
+    let apiUrl = `https://kaiz-apis.gleeze.com/api/gpt-4o-pro?ask=${encodeURIComponent(message)}&uid=1`;
+
+    if (lastImageUrl) {
+        apiUrl += `&imageUrl=${encodeURIComponent(lastImageUrl)}`;
+        lastImageUrl = ""; // Réinitialiser l'image après envoi
     }
 
-    // Sauvegarder les messages dans localStorage
-    function saveMessages(text, sender, image) {
-        let messages = JSON.parse(localStorage.getItem("chatMessages")) || [];
-        messages.push({ text, sender, image });
-        localStorage.setItem("chatMessages", JSON.stringify(messages));
-    }
-
-    // Charger les messages depuis localStorage
-    function loadMessages() {
-        let messages = JSON.parse(localStorage.getItem("chatMessages")) || [];
-        messages.forEach(msg => addMessage(msg.text, msg.sender, msg.image, false));
-    }
-
-    sendMessageBtn.addEventListener("click", async () => {
-        const message = messageInput.value.trim();
-        if (!message) return;
-
-        addMessage(message, "user");
-        messageInput.value = "";
-
-        let requestBody = { message };
-        if (uploadedImageUrl) {
-            requestBody.imageUrl = uploadedImageUrl;
-            uploadedImageUrl = null; // Reset après envoi
-        }
-
-        const response = await fetch("/api/message", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requestBody),
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+            addMessage(data.response, "bot");
+        })
+        .catch(() => {
+            addMessage("❌ Erreur avec l'API.", "bot");
         });
-        const data = await response.json();
-        addMessage(data.reply, "bot");
+}
+
+// Fonction pour téléverser une image sur ImgBB
+function uploadImage(file) {
+    addMessage("📤 Téléchargement de l’image en cours...", "bot");
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    fetch("https://api.imgbb.com/1/upload?key=ffe88394d062119de16776181902619e", {
+        method: "POST",
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        lastImageUrl = data.data.url;
+        addMessage("✅ Image téléchargée. Que voulez-vous en faire ?", "bot");
+    })
+    .catch(() => {
+        addMessage("❌ Erreur lors du téléversement de l’image.", "bot");
     });
+}
 
-    imageUpload.addEventListener("change", async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
+// Gestion des événements
+sendBtn.addEventListener("click", sendMessage);
+userInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") sendMessage();
+});
 
-        addMessage("Téléchargement de l'image en cours...", "bot");
+uploadBtn.addEventListener("click", () => {
+    imageInput.click();
+});
 
-        const formData = new FormData();
-        formData.append("image", file);
-
-        const uploadResponse = await fetch("/api/upload", { method: "POST", body: formData });
-        const { imageUrl } = await uploadResponse.json();
-        uploadedImageUrl = imageUrl;
-
-        addMessage("Image envoyée. Tapez votre question :", "bot", imageUrl);
-    });
+imageInput.addEventListener("change", (e) => {
+    if (e.target.files.length > 0) {
+        uploadImage(e.target.files[0]);
+    }
 });
