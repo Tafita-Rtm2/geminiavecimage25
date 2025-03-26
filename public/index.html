@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatbot</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Gpt4o - Chatbot</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-
-    <div id="chat-container">
-        <div id="chat-box"></div>
-
-        <div id="input-container">
-            <input type="file" id="image-input" accept="image/*" hidden>
-            <button id="upload-btn">📷</button>
-            <input type="text" id="user-input" placeholder="Écrivez un message...">
-            <button id="send-btn">➤</button>
+    <div class="chat-container">
+        <div class="chat-header">
+            <img src="robot1.jpg" alt="Bot"> Gemini pro vision📷
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input">
+            <label for="imageUpload">📷</label>
+            <input type="file" id="imageUpload" accept="image/*" hidden>
+            <input type="text" id="messageInput" placeholder="Tapez votre message...">
+            <button id="sendMessage">Envoyer</button>
         </div>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
